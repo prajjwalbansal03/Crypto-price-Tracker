@@ -196,7 +196,7 @@ def pie_chart(labels, values, title):
 
 
 st.set_page_config(page_title="Crypto Tracker", page_icon="🪙", layout="wide")
-st.title("🪙 Crypto Tracker (Optimized)")
+st.title("🪙 Crypto Tracker")
 
 
 with st.sidebar:
