@@ -1,4 +1,3 @@
-# Virtual environment
 .venc/
 .env
 __pycache__/

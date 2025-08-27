@@ -1,4 +1,4 @@
-# crypto_tracker.py
+
 import time
 import math
 from typing import List, Dict, Any, Optional
@@ -10,17 +10,17 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-# -------------------- Config --------------------
+
 COINGECKO_BASE = "https://api.coingecko.com/api/v3"
 SIMPLE_PRICE_BATCH = 250
-MAX_WORKERS = 6  # limit parallelism to avoid triggering rate limits
+MAX_WORKERS = 6  
 REQUEST_TIMEOUT = 15
 
 TIMEFRAMES = {"7D": 7, "30D": 30, "90D": 90, "1Y": 365}
 PORTFOLIO_TIMEFRAMES = {"30D": 30, "90D": 90, "1Y": 365}
 
 
-# -------------------- Requests session with retry --------------------
+
 @st.cache_resource
 def get_session() -> requests.Session:
     session = requests.Session()
@@ -36,7 +36,7 @@ def get_session() -> requests.Session:
     return session
 
 
-# -------------------- Cached API helpers --------------------
+
 @st.cache_data(ttl=300)
 def cg_ping() -> Dict[str, Any]:
     s = get_session()
@@ -86,7 +86,7 @@ def get_simple_prices_bulk(coin_ids: List[str], vs_currency: str) -> Dict[str, D
         return {}
     s = get_session()
     results: Dict[str, Dict[str, float]] = {}
-    # chunk
+    
     for i in range(0, len(coin_ids), SIMPLE_PRICE_BATCH):
         chunk = coin_ids[i : i + SIMPLE_PRICE_BATCH]
         params = {"ids": ",".join(chunk), "vs_currencies": vs_currency}
@@ -131,7 +131,7 @@ def get_market_chart(coin_id: str, vs_currency: str, days: int) -> pd.DataFrame:
     return df
 
 
-# -------------------- Chart helpers --------------------
+
 def line_chart(df: pd.DataFrame, x_col: str, y_col: str, title: str, y_label: str) -> go.Figure:
     if df.empty:
         return go.Figure()
@@ -171,7 +171,7 @@ def comparison_chart(df_a: pd.DataFrame, df_b: pd.DataFrame, label_a: str, label
         legend=dict(orientation="h"),
     )
 
-    # Build metrics efficiently as a list of rows
+    
     rows = []
     for label, col in [(label_a, "price_a"), (label_b, "price_b")]:
         start = merged[col].iloc[0]
@@ -183,7 +183,7 @@ def comparison_chart(df_a: pd.DataFrame, df_b: pd.DataFrame, label_a: str, label
         rows.append({"Metric": "Daily volatility (%)", "Asset": label, "Value": f"{vol_pct:.2f}"})
 
     metrics = pd.DataFrame(rows)
-    # pivot for nicer presentation: each metric row grouped
+   
     metrics_pivot = metrics.pivot(index="Metric", columns="Asset", values="Value").reset_index()
     return fig, metrics_pivot
 
@@ -194,17 +194,17 @@ def pie_chart(labels, values, title):
     return fig
 
 
-# -------------------- App UI --------------------
+
 st.set_page_config(page_title="Crypto Tracker", page_icon="🪙", layout="wide")
 st.title("🪙 Crypto Tracker (Optimized)")
 
-# -------------------- Sidebar --------------------
+
 with st.sidebar:
     st.header("📊 Market Dashboard")
     currency = st.selectbox("Display currency", ["USD", "INR", "EUR", "GBP"], index=0, key="currency")
     vs = currency.lower()
 
-    # Global stats
+ 
     try:
         global_stats = get_global_stats()
         mkt = global_stats.get("data", {}) or {}
@@ -216,7 +216,7 @@ with st.sidebar:
     except Exception as e:
         st.error(f"Global stats fetch failed: {e}")
 
-    # Gainers / Losers
+  
     try:
         st.subheader("🚀 Top Gainers (24h)")
         coins = get_market_data(vs, per_page=100)
@@ -249,10 +249,9 @@ with st.sidebar:
     except Exception as e:
         st.error(f"CoinGecko ping failed: {e}")
 
-# -------------------- Tabs --------------------
+
 tab_search, tab_portfolio = st.tabs(["🔎 Crypto Search", "💼 Portfolio"])
 
-# -------------------- Crypto Search --------------------
 with tab_search:
     st.subheader("Search a Coin")
     q = st.text_input("Search by name or symbol", value="bitcoin", placeholder="e.g., bitcoin, eth, solana")
@@ -318,16 +317,15 @@ with tab_search:
             else:
                 st.info("Start typing to search Coin B…")
 
-# -------------------- Portfolio --------------------
-# -------------------- Portfolio --------------------
+
 with tab_portfolio:
     st.subheader("Your Portfolio")
 
-    # Init session state storage
+  
     if "portfolio" not in st.session_state:
-        st.session_state.portfolio = []  # list of dicts: {id, name, symbol, amount, alert_dir, alert_price}
+        st.session_state.portfolio = []  
 
-    # --- Add coin form ---
+ 
     with st.expander("➕ Add a coin"):
         q_add = st.text_input("Search coin (name or symbol)", placeholder="e.g., bitcoin, eth, solana", key="q_add")
         results_add = search_coins(q_add.strip()) if q_add.strip() else []
@@ -360,7 +358,7 @@ with tab_portfolio:
                 if exists is None:
                     st.session_state.portfolio.append(entry)
                 else:
-                    # merge: increase amount; update alert if provided
+                   
                     st.session_state.portfolio[exists]["amount"] += entry["amount"]
                     if entry["alert_dir"] != "(none)":
                         st.session_state.portfolio[exists]["alert_dir"] = entry["alert_dir"]
@@ -369,7 +367,6 @@ with tab_portfolio:
             else:
                 st.warning("Pick a coin and enter an amount > 0.")
 
-    # Show & edit holdings table
     if st.session_state.portfolio:
         st.markdown("### Your Holdings")
         for i, row in enumerate(st.session_state.portfolio):
@@ -387,7 +384,7 @@ with tab_portfolio:
                     st.session_state.portfolio.pop(i)
                     st.rerun()
 
-        # Download + clear options
+       
         rm_cols = st.columns([1, 1, 6])
         with rm_cols[0]:
             if st.button("🗑 Clear portfolio", use_container_width=True, key="clear_pf"):
@@ -403,16 +400,12 @@ with tab_portfolio:
                 use_container_width=True,
             )
 
-        # (rest of your portfolio value, pie chart, alerts, history stays same)
-    # else:
-        # st.info("Your portfolio is empty. Use **➕ Add a coin** to get started.")
-
-        # ---- Current value & distribution ----
+      
         coin_ids = [row["id"] for row in st.session_state.portfolio]
         amounts = {row["id"]: float(row.get("amount", 0.0) or 0.0) for row in st.session_state.portfolio}
 
         try:
-            prices = get_simple_prices_bulk(coin_ids, vs)  # {id: {vs: price}}
+            prices = get_simple_prices_bulk(coin_ids, vs) 
         except requests.exceptions.HTTPError as e:
             if e.response is not None and e.response.status_code == 429:
                 st.error("⚠️ Rate limit exceeded. Please wait a few seconds and try again.")
@@ -420,7 +413,7 @@ with tab_portfolio:
             else:
                 raise
 
-        # compute current values
+        
         values = {}
         total_value = 0.0
         for cid in coin_ids:
@@ -435,7 +428,7 @@ with tab_portfolio:
         with c2:
             st.caption("Prices via CoinGecko — cached to respect rate limits.")
 
-        # pie
+       
         if total_value > 0 and any(v > 0 for v in values.values()):
             labels = [next(x["name"] for x in st.session_state.portfolio if x["id"] == cid) for cid in coin_ids]
             vals = [values[cid] for cid in coin_ids]
@@ -443,7 +436,7 @@ with tab_portfolio:
         else:
             st.info("Your portfolio total is 0. Add amounts or wait for prices.")
 
-        # ---- Alerts check ----
+        
         st.markdown("### Alerts")
         alerts_rows = []
         for row in st.session_state.portfolio:
@@ -470,14 +463,14 @@ with tab_portfolio:
         alerts_df = pd.DataFrame(alerts_rows)
         st.dataframe(alerts_df, use_container_width=True)
 
-        # ---- Historical portfolio value ----
+        
         st.markdown("### Portfolio Value Over Time")
         tf = st.radio("Timeframe", options=list(PORTFOLIO_TIMEFRAMES.keys()), horizontal=True, index=2, key="port_tf")
         days = PORTFOLIO_TIMEFRAMES[tf]
 
-        # Build combined portfolio timeseries (parallel fetch)
+        
         combined = None
-        # limit coins to those with positive amounts
+        
         positive_coin_ids = [cid for cid in coin_ids if amounts.get(cid, 0.0) > 0]
         if positive_coin_ids:
             futures = {}
@@ -493,7 +486,7 @@ with tab_portfolio:
                         if df_c.empty:
                             continue
                         df_c = df_c.rename(columns={"price": f"value_{cid}"})
-                        # multiply price by coin amount = position value
+                       
                         amt = amounts.get(cid, 0.0)
                         df_c[f"value_{cid}"] = df_c[f"value_{cid}"] * amt
                         dfs[cid] = df_c[["date", f"value_{cid}"]]
@@ -505,7 +498,7 @@ with tab_portfolio:
                     except Exception as e:
                         st.error(f"Failed fetching history for {cid}: {e}")
 
-            # merge all dfs on 'date' (outer) and sum values
+            
             if dfs:
                 merged = None
                 for i, (cid, dfi) in enumerate(dfs.items()):
@@ -513,7 +506,7 @@ with tab_portfolio:
                         merged = dfi.copy()
                     else:
                         merged = pd.merge(merged, dfi, on="date", how="outer")
-                    # be polite when merging many coins
+                   
                     time.sleep(0.05)
                 if merged is not None and not merged.empty:
                     value_cols = [c for c in merged.columns if c.startswith("value_")]
